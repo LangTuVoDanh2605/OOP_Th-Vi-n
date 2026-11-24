@@ -39,7 +39,7 @@ public class QLPhieuMuon extends QLThuVien {
             System.out.println("| 7) Quan ly chi tiet cua phieu muon        |");
             System.out.println("| 0) Thoat                                  |");
             System.out.println("+-------------------------------------------+");
-            System.out.print("Nhap lua chon tu 0 - 7: ");
+            System.out.print("Nhap lua chon tu 0 - 8: ");
             choice = nhapSo(sc);
 
             switch (choice) {
@@ -66,6 +66,7 @@ public class QLPhieuMuon extends QLThuVien {
                 }
                 case 6 -> thongKe(sc);
                 case 7 -> menuChiTietCuaPhieu(sc);
+                case 8 -> traSach(sc);
                 case 0 -> System.out.println("Da thoat khoi Quan ly Phieu Muon.");
                 default -> System.out.println("Lua chon khong hop le.");
             }
@@ -112,12 +113,19 @@ public class QLPhieuMuon extends QLThuVien {
                     System.out.print("Nhap ma sach (VD: S01): ");
                     ct.setMaSach(sc.nextLine().trim());
                     ct.setSoLuong(nhapSoDuong(sc, "Nhap so luong muon: "));
-
+                     if (pm.getNgayThucTra() != null) {
+                        System.out.println("Phieu muon nay da tra, khong the them sach!");
+                        break;
+                    }
+                    if (!dsBook.giamSoLuong(ct.getMaSach(), ct.getSoLuong())) {
+                        break;
+                    }
                     if (dsCTPM.Them(ct)) {
                         pm.themChiTiet(ct);
                         dsCTPM.WriteFile();
                         System.out.println("=> Them chi tiet " + maCTMoi + " thanh cong!");
                     } else {
+                        dsBook.tangSoLuong(ct.getMaSach(), ct.getSoLuong());
                         System.out.println("Khong the them chi tiet!");
                     }
                 }
@@ -131,9 +139,27 @@ public class QLPhieuMuon extends QLThuVien {
                         System.out.println("Khong tim thay chi tiet " + maCT + " trong phieu " + pm.getMaPM());
                         break;
                     }
+                    if (pm.getNgayThucTra() != null) {
+                        System.out.println("Phieu muon nay da tra, khong the sua chi tiet!");
+                        break;
+                    }
+                    if (pm.getNgayThucTra() != null) {
+                        System.out.println("Phieu muon nay da tra, khong the sua chi tiet!");
+                        break;
+                    }
+                    String maSachCu = ct.getMaSach();
+                    int soLuongCu = ct.getSoLuong();
+                    String maSachCu = ct.getMaSach();
+                    int soLuongCu = ct.getSoLuong();
                     System.out.print("Nhap ma sach moi: ");
-                    ct.setMaSach(sc.nextLine().trim());
-                    ct.setSoLuong(nhapSoDuong(sc, "Nhap so luong moi: "));
+                    String maSachMoi = sc.nextLine().trim();
+                    int soLuongMoi = nhapSoDuong(sc, "Nhap so luong moi: ");
+
+                    if (!capNhatSoLuongKhiSua(maSachCu, soLuongCu, maSachMoi, soLuongMoi)) {
+                        break;
+                    }
+                    ct.setMaSach(maSachMoi);
+                    ct.setSoLuong(soLuongMoi);
                     dsCTPM.WriteFile();
                     System.out.println("=> Sua chi tiet thanh cong!");
                 }
@@ -142,9 +168,17 @@ public class QLPhieuMuon extends QLThuVien {
                     if (pm.getSoChiTiet() == 0) break;
                     System.out.print("Nhap ma chi tiet can xoa: ");
                     String maCT = sc.nextLine().trim();
+                    ChiTietPhieuMuon ctCanXoa = pm.timChiTiet(maCT);
+                    if (ctCanXoa == null) {
+                        System.out.println("Khong tim thay chi tiet " + maCT + " trong phieu " + pm.getMaPM());
+                        break;
+                    }
                     if (pm.xoaChiTiet(maCT)) {
                         dsCTPM.Xoa(maCT);
                         dsCTPM.WriteFile();
+                        if (pm.getNgayThucTra() == null) {
+                            dsBook.tangSoLuong(ctCanXoa.getMaSach(), ctCanXoa.getSoLuong());
+                        }
                         System.out.println("=> Xoa chi tiet thanh cong!");
                     } else {
                         System.out.println("Khong tim thay chi tiet " + maCT + " trong phieu " + pm.getMaPM());
@@ -174,9 +208,13 @@ public class QLPhieuMuon extends QLThuVien {
             System.out.print("Nhap ma sach (VD: S01): ");
             ct.setMaSach(sc.nextLine().trim());
             ct.setSoLuong(nhapSoDuong(sc, "Nhap so luong muon: "));
-
+             if (!dsBook.giamSoLuong(ct.getMaSach(), ct.getSoLuong())) {
+                continue;
+            }
             if (dsCTPM.Them(ct)) {
                 pm.themChiTiet(ct);
+                 } else {
+                dsBook.tangSoLuong(ct.getMaSach(), ct.getSoLuong());
             }
         }
         System.out.println("=> Them phieu muon kem chi tiet thanh cong!");
@@ -232,6 +270,11 @@ public class QLPhieuMuon extends QLThuVien {
         for (ChiTietPhieuMuon ct : cts) {
             dsCTPM.Xoa(ct.getMaCT());
         }
+        if (pm.getNgayThucTra() == null) {
+            for (ChiTietPhieuMuon ct : cts) {
+                dsBook.tangSoLuong(ct.getMaSach(), ct.getSoLuong());
+            }
+        }
         dsPM.Xoa(maPM);
         System.out.println("Da xoa phieu muon " + maPM + " va toan bo chi tiet lien quan.");
     }
@@ -247,7 +290,64 @@ public class QLPhieuMuon extends QLThuVien {
         System.out.println("Tong so sach muon cua phieu " + maPM + ": " + pm.tinhTongSoSach() + " cuon");
         pm.xuatChiTiet();
     }
+   private void traSach(Scanner sc) {
+        dsPM.ReadFile();
+        dsCTPM.ReadFile();
+        dsPM.napChiTiet(dsCTPM);
+        dsBook.ReadFile();
 
+        System.out.print("Nhap ma phieu muon can tra: ");
+        String maPM = sc.nextLine().trim();
+        PhieuMuon pm = dsPM.TimTheoMa(maPM);
+        if (pm == null) {
+            System.out.println("Khong tim thay phieu muon.");
+            return;
+        }
+        if (pm.getNgayThucTra() != null) {
+            System.out.println("Phieu " + maPM + " da duoc tra truoc do.");
+            return;
+        }
+
+        ChiTietPhieuMuon[] chiTietList = dsCTPM.TimTheoMaPM(maPM);
+        if (chiTietList.length == 0) {
+            System.out.println("Phieu muon khong co sach de tra.");
+            return;
+        }
+
+        System.out.print("Xac nhan tra sach cua phieu " + maPM + "? (Y/N): ");
+        String xacNhan = sc.nextLine().trim();
+        if (!xacNhan.equalsIgnoreCase("Y")) {
+            System.out.println("Da huy tra sach.");
+            return;
+        }
+
+        for (ChiTietPhieuMuon ct : chiTietList) {
+            dsBook.tangSoLuong(ct.getMaSach(), ct.getSoLuong());
+        }
+        pm.setNgayThucTra(LocalDate.now());
+        dsPM.WriteFile();
+        dsBook.WriteFile();
+        System.out.println("Tra sach thanh cong. Ngay thuc tra: " + pm.getNgayThucTraStr());
+    }
+    private boolean capNhatSoLuongKhiSua(String maSachCu, int soLuongCu,
+                                         String maSachMoi, int soLuongMoi) {
+        if (maSachCu.equalsIgnoreCase(maSachMoi)) {
+            if (soLuongMoi > soLuongCu) {
+                return dsBook.giamSoLuong(maSachMoi, soLuongMoi - soLuongCu);
+            }
+            if (soLuongMoi < soLuongCu) {
+                return dsBook.tangSoLuong(maSachMoi, soLuongCu - soLuongMoi);
+            }
+            return true;
+        }
+
+        dsBook.tangSoLuong(maSachCu, soLuongCu);
+        if (!dsBook.giamSoLuong(maSachMoi, soLuongMoi)) {
+            dsBook.giamSoLuong(maSachCu, soLuongCu);
+            return false;
+        }
+        return true;
+    }
     private int nhapSo(Scanner sc) {
         try {
             return Integer.parseInt(sc.nextLine().trim());
